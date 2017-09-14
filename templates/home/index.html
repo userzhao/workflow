@@ -1,0 +1,95 @@
+{{ template "head.html" .user}}
+<div class="container">
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target=".cms">新建工单</button>
+
+    <ul class="nav nav-tabs" role="tablist" style="margin-bottom: 5px; margin-top: 5px">
+        <li role="presentation" {{if eq .show "apply" }} class="active" {{end}}><a href="/index?type=apply">我的申请</a></li>
+        <li role="presentation" {{if eq .show "approval" }} class="active" {{end}}><a href="/index?type=approval">我的审批</a></li>
+        <li role="presentation" {{if eq .show "all" }} class="active" {{end}}><a href="/index?type=all">全部</a></li>
+    </ul>
+
+    <table class="table table-hover table-condensed table-striped table-responsive" style="table-layout: fixed;">
+        <thead>
+        <tr>
+            <td style="white-space:nowrap;overflow:hidden;text-overflow: ellipsis; width: 25%;">申请人</td>
+            <td style="white-space:nowrap;overflow:hidden;text-overflow: ellipsis; width: 25%;">类型</td>
+            <td style="white-space:nowrap;overflow:hidden;text-overflow: ellipsis; width: 25%;">状态</td>
+            <td style="white-space:nowrap;overflow:hidden;text-overflow: ellipsis; width: 25%;">描述</td>
+        </tr>
+        </thead>
+        {{ range $i, $v := .objs }}
+            <tr class="">
+                <td style="white-space:nowrap;overflow:hidden;text-overflow: ellipsis;width:25%;">{{ ($v.CreateUserId | getUserById).FirstName }}</td>
+                <td style="white-space:nowrap; overflow: hidden;text-overflow: ellipsis; width:25%;">{{ ($v.TypeId | getTypeById).Name }}</td>
+                <td style="white-space:nowrap; overflow: hidden;text-overflow: ellipsis; width:25%;">{{ ($v.CurrentStateId | getStateById).Name }}</td>
+                <td style="white-space:nowrap;overflow:hidden;text-overflow: ellipsis;width:25%;"><a href="/cms/{{ $v.Id }}/detail">{{ $v.Description }}</a>></td>
+            </tr>
+        {{ end }}
+    </table>
+
+    <div class="modal fade cms" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">请填写工单信息</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="cms-form">
+                        <div class="form-group">
+                            <label for="cms-type" class="control-label">描述：</label>
+                            <select class="form-control" id="cms-type" name="cms-type" style="width: 100%;">
+                                {{ range $i, $v := .type }}
+                                    <option value="{{ $v.Id }}">{{ $v.Name }}</option>
+                                {{ end }}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cms-note" class="control-label">描述：</label>
+                            <textarea id="cms-note" name="cms-note" class="form-control" rows="4" placeholder="必填" maxlength="500" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success" id="submit">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ template "foot.html"}}
+<script>
+    $(document).ready(function () {
+
+        $('#submit').click(function () {
+            var type = $('#cms-type').val();
+            var note = $('#cms-note').val();
+            var data = new FormData($('#cms-form').get(0));
+            if (type && note) {
+                loadgif(true);
+                $.ajax({
+                    url: "/cms/create/",
+                    type: "post",
+                    data: data,
+                    enctype: "multipart/form-data",
+                    cache: false,
+                    processData: false,
+                    contentType: false,
+                    success: function (ret) {
+                        loadgif(false);
+                        if (ret.msg != 1) {
+                            bootbox.alert(ret.msg);
+                        } else {
+                            location.reload();
+                        }
+                    }
+                });
+            } else {
+                bootbox.alert('缺少必填信息');
+            }
+        });
+    })
+</script>
+

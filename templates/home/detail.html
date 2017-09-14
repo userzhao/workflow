@@ -1,0 +1,168 @@
+{{ template "head.html" .user}}
+<div class="container">
+    {{ if not .obj.CompleteTime.Valid }}
+        {{ if eq .obj.CurrentStateId 2 }}
+            {{ if eq .user.Id (getUserById .obj.CreateUserId).SuperiorId}}
+                <button type="button" class="btn btn-info next" data-toggle="modal" data-target=".tran" >同意</button>
+                <button type="button" class="btn btn-danger stop" data-toggle="modal" data-target=".tran" >拒绝</button>
+            {{ end }}
+        {{ else if eq .obj.CurrentStateId 3 }}
+            {{ if eq .user.Id (getUserById .obj.CreateUserId).DepartmentUserID.Val}}
+            <button type="button" class="btn btn-info next" data-toggle="modal" data-target=".tran" >同意</button>
+            <button type="button" class="btn btn-danger stop" data-toggle="modal" data-target=".tran" >拒绝</button>
+            {{ end }}
+        {{ else }}
+            {{ if (perm .user.Id .obj.CurrentStateId) }}
+            <button type="button" class="btn btn-info next" data-toggle="modal" data-target=".tran" >同意</button>
+            <button type="button" class="btn btn-danger stop" data-toggle="modal" data-target=".tran" >拒绝</button>
+            {{ end }}
+        {{ end }}
+    {{ end }}
+    <div class="modal fade tran" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">操作记录</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="tran-form">
+                        <input type="hidden" name="objId" value="{{ .obj.Id }}">
+                        <input type="hidden" id="result" name="result" >
+                        <textarea  name="note" class="form-control" rows="4" placeholder="必填" maxlength="500" required></textarea>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success" id="submit">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <table class="table table-bordered table-hover" style="margin-top: 10px; table-layout: fixed;">
+        <tbody>
+            <tr>
+                <th scope="row">申请人</th>
+                <td style="width:80%;">{{ (.obj.CreateUserId | getUserById).FirstName }}</td>
+            </tr>
+            <tr>
+                <th scope="row">工单类型</th>
+                <td style="width:80%;">{{ (.obj.TypeId | getTypeById).Name }}</td>
+            </tr>
+            <tr>
+                <th scope="row">创建时间</th>
+                <td style="width:80%;">{{ .obj.CreateTime | timeFormat }}</td>
+            </tr>
+            <tr>
+                <th scope="row">当前状态</th>
+                <td style="width:80%;"><strong>{{ (.obj.CurrentStateId | getStateById).Name }}</strong></td>
+            </tr>
+            <tr>
+                <th scope="row">描述</th>
+                <td style="width:80%;word-wrap:break-word;">{{ .obj.Description }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+
+    <p><span class="label label-primary" >执行流程</span></p>
+    {{ range $i, $v :=  $.states }}
+        {{ if le $i $.stateIndex }}
+            <div class="class" title="执行人:{{ getTranUsersById ($v | strToInt | getStateById).UsersId }}" style='line-height: 96px; text-align: center; display: inline-block; width: 96px; height: 96px; background-image: url("/static/images/tran.png"); background-size: 96px;'>
+                <strong>{{ ($v | strToInt | getStateById).Name }}</strong>
+            </div>
+            {{ if not ($v | strToInt | getStateById).IsEnd }}
+            <img src="/static/images/flow.png" >
+            {{ end }}
+        {{ else }}
+            <div class="class" title="执行人:{{ getTranUsersById ($v | strToInt | getStateById).UsersId }}" style='line-height: 96px; text-align: center; display: inline-block; width: 96px; height: 96px; background-image: url("/static/images/untran.png"); background-size: 96px;'>
+                <strong>{{ ($v | strToInt | getStateById).Name }}</strong>
+            </div>
+            {{ if not ($v | strToInt | getStateById).IsEnd }}
+            <img src="/static/images/flow.png" >
+            {{ end }}
+        {{ end }}
+    {{ end}}
+
+    {{ if (len .history) }}
+    <p><span class="label label-primary"  style="margin-top: 30px; display: inline-block;">日志记录</span></p>
+    <table class="table table-bordered table-hover" style="table-layout: fixed;">
+
+        <thead>
+            <tr>
+                <th style="width: 20%;">执行时间</th>
+                <th style="width: 20%;">状态</th>
+                <th style="width:30%;word-wrap:break-word;">记录</th>
+                <th style="width: 15%;">执行人</th>
+                <th style="width: 15%;">执行结果</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ range $i, $v :=  .history }}
+                {{ if $v.Result }}
+                    <tr>
+                        <td style="width: 20%;">{{ timeFormat $v.CreateTime }}</td>
+                        <td style="width: 20%;">{{ (getStateById $v.InstanceStateId).Name }}</td>
+                        <td style="width:30%;word-wrap:break-word;">{{ $v.Note }}</td>
+                        <td style="width: 15%;">{{ (getUserById $v.CreateUserId).FirstName }}</td>
+                        <td style="width: 15%;">{{ if $v.Result }}同意{{else}}拒绝{{end}}</td>
+                    </tr>
+                {{ else }}
+                    <tr style="color: red;">
+                        <td style="width: 20%;">{{ timeFormat $v.CreateTime }}</td>
+                        <td style="width: 20%;">{{ (getStateById $v.InstanceStateId).Name }}</td>
+                        <td style="width:30%;word-wrap:break-word;">{{ $v.Note }}</td>
+                        <td style="width: 15%;">{{ (getUserById $v.CreateUserId).FirstName }}</td>
+                        <td style="width: 15%;">{{ if $v.Result }}同意{{else}}拒绝{{end}}</td>
+                    </tr>
+                {{ end }}
+            {{ end }}
+
+        </tbody>
+    </table>
+    {{end}}
+
+
+</div>
+{{ template "foot.html"}}
+<script>
+    $(document).ready(function () {
+
+        $(".next").click(function () {
+            var result = $("#result");
+            result.val("1");
+        });
+
+        $(".stop").click(function () {
+            var result = $("#result");
+            result.val("0");
+        });
+
+        $('#submit').click(function () {
+            var result = $("#result");
+            var data = new FormData($('#tran-form').get(0));
+            loadgif(true);
+            $.ajax({
+                url: "/cms/tran/",
+                type: "post",
+                data: data,
+                enctype: "multipart/form-data",
+                cache: false,
+                processData: false,
+                contentType: false,
+                success: function (ret) {
+                    if (ret.msg != 1) {
+                        loadgif(false);
+                        bootbox.alert(ret.msg);
+                    } else {
+                        loadgif(false);
+                        window.location.href='/index?type=approval'
+                    }
+
+                }
+            });
+        });
+    })
+</script>
